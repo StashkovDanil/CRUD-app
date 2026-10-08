@@ -1,0 +1,532 @@
+openapi: 3.0.3
+info:
+  title: Warehouse CRUD API
+  description: >
+    Учебное REST API для системы складского учёта.
+    Документ — контракт (API First) между backend (FastAPI + PostgreSQL, честный SQL)
+    и клиентским приложением (PySide6).
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8000
+    description: Локальный сервер разработки
+
+tags:
+  - name: categories
+    description: Категории товаров
+  - name: suppliers
+    description: Поставщики
+  - name: warehouses
+    description: Склады
+  - name: products
+    description: Товары
+  - name: stock
+    description: Остатки товаров на складах (M:M products <-> warehouses)
+  - name: documents
+    description: Документы прихода/расхода (M:M documents <-> products)
+
+paths:
+  # ------------------------------------------------------------ categories
+  /categories:
+    get:
+      tags: [categories]
+      summary: Список категорий
+      responses:
+        "200":
+          description: Список категорий
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Category" }
+    post:
+      tags: [categories]
+      summary: Создать категорию
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CategoryInput" }
+      responses:
+        "201":
+          description: Категория создана
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /categories/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    put:
+      tags: [categories]
+      summary: Обновить категорию
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CategoryInput" }
+      responses:
+        "200":
+          description: Категория обновлена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [categories]
+      summary: Удалить категорию
+      responses:
+        "204": { description: Категория удалена }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  # ------------------------------------------------------------- suppliers
+  /suppliers:
+    get:
+      tags: [suppliers]
+      summary: Список поставщиков
+      responses:
+        "200":
+          description: Список поставщиков
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Supplier" }
+    post:
+      tags: [suppliers]
+      summary: Создать поставщика
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierInput" }
+      responses:
+        "201":
+          description: Поставщик создан
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Supplier" }
+
+  /suppliers/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    put:
+      tags: [suppliers]
+      summary: Обновить поставщика
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierInput" }
+      responses:
+        "200":
+          description: Поставщик обновлён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Supplier" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [suppliers]
+      summary: Удалить поставщика
+      responses:
+        "204": { description: Поставщик удалён }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ------------------------------------------------------------ warehouses
+  /warehouses:
+    get:
+      tags: [warehouses]
+      summary: Список складов
+      responses:
+        "200":
+          description: Список складов
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Warehouse" }
+    post:
+      tags: [warehouses]
+      summary: Создать склад
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WarehouseInput" }
+      responses:
+        "201":
+          description: Склад создан
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Warehouse" }
+
+  /warehouses/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    put:
+      tags: [warehouses]
+      summary: Обновить склад
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WarehouseInput" }
+      responses:
+        "200":
+          description: Склад обновлён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Warehouse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [warehouses]
+      summary: Удалить склад
+      responses:
+        "204": { description: Склад удалён }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  # -------------------------------------------------------------- products
+  /products:
+    get:
+      tags: [products]
+      summary: Список товаров (с названием категории)
+      parameters:
+        - name: category_id
+          in: query
+          schema: { type: integer }
+          description: Фильтр по категории
+      responses:
+        "200":
+          description: Список товаров
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ProductWithCategory" }
+    post:
+      tags: [products]
+      summary: Создать товар
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductInput" }
+      responses:
+        "201":
+          description: Товар создан
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /products/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    put:
+      tags: [products]
+      summary: Обновить товар
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductInput" }
+      responses:
+        "200":
+          description: Товар обновлён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [products]
+      summary: Удалить товар
+      responses:
+        "204": { description: Товар удалён }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  # ----------------------------------------------------------------- stock
+  /stock:
+    get:
+      tags: [stock]
+      summary: Остатки товаров по складам
+      parameters:
+        - name: warehouse_id
+          in: query
+          schema: { type: integer }
+          description: Фильтр по складу
+      responses:
+        "200":
+          description: Список остатков
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Stock" }
+
+  /stock/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    patch:
+      tags: [stock]
+      summary: Ручная корректировка остатка (инвентаризация)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StockAdjust" }
+      responses:
+        "200":
+          description: Остаток скорректирован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Stock" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ------------------------------------------------------------- documents
+  /documents:
+    get:
+      tags: [documents]
+      summary: Список документов
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [DRAFT, POSTED] }
+        - name: warehouse_id
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Список документов
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Document" }
+    post:
+      tags: [documents]
+      summary: Создать документ-черновик с позициями
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DocumentInput" }
+      responses:
+        "201":
+          description: Документ создан
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DocumentDetail" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /documents/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    get:
+      tags: [documents]
+      summary: Документ с позициями
+      responses:
+        "200":
+          description: Документ
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DocumentDetail" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [documents]
+      summary: Удалить документ (только черновик)
+      responses:
+        "204": { description: Документ удалён }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /documents/{id}/post:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    post:
+      tags: [documents]
+      summary: Провести документ (списать/оприходовать товар на складе)
+      description: >
+        Выполняется в одной транзакции: для расхода проверяется достаточность
+        остатка, затем обновляется таблица stock и статус документа.
+      responses:
+        "200":
+          description: Документ проведён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DocumentDetail" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+
+  responses:
+    NotFound:
+      description: Запись не найдена
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: Конфликт данных (например, нарушение внешнего ключа)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        detail: { type: string }
+
+    Category:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string, nullable: true }
+      required: [id, name]
+    CategoryInput:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string, nullable: true }
+      required: [name]
+
+    Supplier:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        contact_person: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+      required: [id, name]
+    SupplierInput:
+      type: object
+      properties:
+        name: { type: string }
+        contact_person: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+      required: [name]
+
+    Warehouse:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        address: { type: string, nullable: true }
+      required: [id, name]
+    WarehouseInput:
+      type: object
+      properties:
+        name: { type: string }
+        address: { type: string, nullable: true }
+      required: [name]
+
+    Product:
+      type: object
+      properties:
+        id: { type: integer }
+        sku: { type: string }
+        name: { type: string }
+        category_id: { type: integer }
+        unit: { type: string }
+        price: { type: number }
+        description: { type: string, nullable: true }
+      required: [id, sku, name, category_id, unit, price]
+    ProductWithCategory:
+      allOf:
+        - $ref: "#/components/schemas/Product"
+        - type: object
+          properties:
+            category_name: { type: string }
+    ProductInput:
+      type: object
+      properties:
+        sku: { type: string }
+        name: { type: string }
+        category_id: { type: integer }
+        unit: { type: string, nullable: true, description: "По умолчанию 'шт'" }
+        price: { type: number, default: 0 }
+        description: { type: string, nullable: true }
+      required: [sku, name, category_id]
+
+    Stock:
+      type: object
+      properties:
+        id: { type: integer }
+        product_id: { type: integer }
+        product_name: { type: string }
+        warehouse_id: { type: integer }
+        warehouse_name: { type: string }
+        quantity: { type: number }
+        updated_at: { type: string, format: date-time }
+    StockAdjust:
+      type: object
+      properties:
+        quantity: { type: number, minimum: 0 }
+      required: [quantity]
+
+    DocumentItemInput:
+      type: object
+      properties:
+        product_id: { type: integer }
+        quantity: { type: number, exclusiveMinimum: 0 }
+        price: { type: number, minimum: 0, default: 0 }
+      required: [product_id, quantity]
+    DocumentItem:
+      allOf:
+        - $ref: "#/components/schemas/DocumentItemInput"
+        - type: object
+          properties:
+            id: { type: integer }
+            product_name: { type: string }
+    DocumentInput:
+      type: object
+      properties:
+        doc_number: { type: string }
+        doc_type: { type: string, enum: [IN, OUT] }
+        warehouse_id: { type: integer }
+        supplier_id: { type: integer, nullable: true }
+        comment: { type: string, nullable: true }
+        items:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/DocumentItemInput" }
+      required: [doc_number, doc_type, warehouse_id, items]
+    Document:
+      type: object
+      properties:
+        id: { type: integer }
+        doc_number: { type: string }
+        doc_type: { type: string, enum: [IN, OUT] }
+        warehouse_id: { type: integer }
+        warehouse_name: { type: string }
+        supplier_id: { type: integer, nullable: true }
+        supplier_name: { type: string, nullable: true }
+        status: { type: string, enum: [DRAFT, POSTED] }
+        created_at: { type: string, format: date-time }
+        comment: { type: string, nullable: true }
+    DocumentDetail:
+      allOf:
+        - $ref: "#/components/schemas/Document"
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/DocumentItem" }
